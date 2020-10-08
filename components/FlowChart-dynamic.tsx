@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useReducer } from 'react';
-import ReactFlow, { Background } from 'react-flow-renderer';
+import React, { useState, useEffect, useReducer, useRef } from 'react';
+import ReactFlow, { Background, addEdge } from 'react-flow-renderer';
 import { nanoid } from 'nanoid';
 import { Button, FormControl, FormLabel } from 'react-bootstrap';
 
@@ -10,10 +10,7 @@ import {
   selectCompositionName,
 } from '../store/reducers/executionReducer';
 
-import {
-  selectSequence,
-  selectCurrentSequence,
-} from '../store/reducers/sequenceReducer';
+import { selectCurrentSequence } from '../store/reducers/sequenceReducer';
 import {
   selectClickedFunc,
   setCurrentFunc,
@@ -21,268 +18,444 @@ import {
 import {
   setFlowRendererNodeId,
   selectFlowRendererNodeId,
-  //setNodes,
-  //updateNodeName,
-  //selectNodes,
 } from '../store/reducers/canvasReducer';
 
 import FlowName from './FlowName';
 
-const initElements = [
-  {
-    id: 'init-start',
-    data: { label: 'Start' },
-    position: { x: 190, y: 5 },
-    style: {
-      background: '#333',
-      color: '#fff',
-      border: '1px solid #bbb',
-      width: 70,
-      padding: 5,
-    },
-  },
-  {
-    id: 'init-0',
-    data: { label: 'Choose a Flow first' },
-    position: { x: 75, y: 75 },
-    style: {
-      fontWeight: 700,
-      fontSize: 20,
-      background: '#eee',
-      color: '#333',
-      border: '1px solid #bebebe',
-      width: 300,
-    },
-  },
-
-  {
-    id: 'init-end',
-    data: { label: 'End' },
-    position: { x: 190, y: 180 },
-    style: {
-      background: '#333',
-      color: '#fff',
-      border: '1px solid #bbb',
-      width: 70,
-      padding: 5,
-    },
-  },
-  { id: 'init-e1-3', source: 'init-start', target: 'init-0', animated: true },
-  { id: 'init-e1-4', source: 'init-0', target: 'init-end', animated: true },
-];
-
-const elements = [
-  {
-    id: 'sequence-start',
-    data: { label: 'Start' },
-    position: { x: 190, y: 5 },
-    style: {
-      background: '#333',
-      color: '#fff',
-      border: '1px solid #bbb',
-      width: 70,
-      padding: 5,
-    },
-  },
-  {
-    id: 'sequence-0',
-    data: { label: 'Node 1' },
-    position: { x: 150, y: 75 },
-    style: { fontWeight: 400, fontSize: 15, background: '#eee', color: '#333' },
-  },
-  {
-    id: 'sequence-1',
-    data: { label: 'Node 2' },
-    position: { x: 150, y: 150 },
-    style: { fontWeight: 400, fontSize: 15, background: '#eee', color: '#333' },
-  },
-  {
-    id: 'sequence-end',
-    data: { label: 'End' },
-    position: { x: 190, y: 225 },
-    style: {
-      background: '#333',
-      color: '#fff',
-      border: '1px solid #bbb',
-      width: 70,
-      padding: 5,
-    },
-  },
-  { id: 'e1-2', source: 'sequence-0', target: 'sequence-1', animated: true },
-  {
-    id: 'e1-3',
-    source: 'sequence-start',
-    target: 'sequence-0',
-    animated: true,
-  },
-  { id: 'e1-4', source: 'sequence-1', target: 'sequence-end', animated: true },
-];
-
-const elements_ifelse = [
-  {
-    id: 'ifelse-start',
-    data: { label: 'Start' },
-    position: { x: 190, y: 5 },
-    style: {
-      background: '#333',
-      color: '#fff',
-      border: '1px solid #bbb',
-      width: 70,
-      padding: 5,
-    },
-  },
-  {
-    id: 'ifelse-0',
-    data: { label: 'Node 1' },
-    position: { x: 150, y: 75 },
-    style: { fontWeight: 400, fontSize: 15, background: '#eee', color: '#333' },
-  },
-  {
-    id: 'ifelse-1',
-    data: { label: 'Node 2' },
-    position: { x: 50, y: 150 },
-    style: { fontWeight: 400, fontSize: 15, background: '#eee', color: '#333' },
-  },
-  {
-    id: 'ifelse-2',
-    data: { label: 'Node 3' },
-    position: { x: 250, y: 150 },
-    style: { fontWeight: 400, fontSize: 15, background: '#eee', color: '#333' },
-  },
-  {
-    id: 'ifelse-end',
-    data: { label: 'End' },
-    position: { x: 190, y: 225 },
-    style: {
-      background: '#333',
-      color: '#fff',
-      border: '1px solid #bbb',
-      width: 70,
-      padding: 5,
-    },
-  },
-  { id: 'e2-2', source: 'ifelse-start', target: 'ifelse-0', animated: true },
-  {
-    id: 'e2-3',
-    source: 'ifelse-0',
-    target: 'ifelse-1',
-    animated: false,
-    type: 'smoothstep',
-    arrowHeadType: 'arrowclosed',
-    label: 'true',
-  },
-  {
-    id: 'e2-4',
-    source: 'ifelse-0',
-    target: 'ifelse-2',
-    animated: false,
-    type: 'smoothstep',
-    arrowHeadType: 'arrowclosed',
-    style: { stroke: '#f6ab6c' },
-    label: 'false',
-  },
-  {
-    id: 'e2-5',
-    source: 'ifelse-1',
-    target: 'ifelse-end',
-    animated: false,
-    type: 'smoothstep',
-  },
-  {
-    id: 'e2-6',
-    source: 'ifelse-2',
-    target: 'ifelse-end',
-    animated: false,
-    type: 'smoothstep',
-    style: { stroke: '#f6ab6c' },
-  },
-];
-
-export const combineResult = (name, flowType, nodes) => {
+export const combineResult = (name, flowType, nodes = []) => {
   const tempFunc = nodes
     .filter((node) =>
       node.data !== undefined &&
-      node.data.label !== 'Start' &&
-      node.data.label !== 'End'
-        ? node
+      node.data.label !== 'start' &&
+      node.data.label !== 'end'
+        ? node.data.label
         : ''
     )
-    .map((e) => {
-      return e.data.funcID;
-    });
+    .map((e) => e.data.funcID);
   return { name, type: flowType, func: tempFunc };
 };
 
 const BasicFlow = (props) => {
   const reduxDispatch = useDispatch();
   const compositionName = useSelector(selectCompositionName);
-  const sequences = useSelector(selectSequence);
   const selectedCurrentSequence = useSelector(selectCurrentSequence);
   const selectedFunctions = useSelector(selectClickedFunc);
+  let [nodes, setNodes] = useState([]);
+  const canvasRef = useRef();
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const selectedFlowRendererNodeId = useSelector(selectFlowRendererNodeId);
-  //const nodes = useSelector(selectNodes);
+  const onConnect = (elem) => setNodes((n) => addEdge(elem, n));
 
-  let updateSequence = () => {
-    let nodeValue;
-    if (selectedCurrentSequence.toString() == 'sequence') {
-      //return elements;
-      nodeValue = elements;
-      // reduxDispatch(setNodes(elements));
-    } else if (selectedCurrentSequence.toString() == 'ifelse') {
-      //  reduxDispatch(setNodes(elements_ifelse));
-      // return elements_ifelse;
-      nodeValue = elements_ifelse;
-    } else {
-      //   reduxDispatch(setNodes(initElements)); //initElements;}
-      nodeValue = initElements;
-    }
-    return nodeValue;
-  };
-  let nodes = updateSequence();
-  let updateFunction = () => {
-    let newState = nodes.map((node) => {
-      if (node.id == selectedFlowRendererNodeId) {
-        node.data = {
-          label: selectedFunctions.name,
-          funcID: selectedFunctions.id,
-        };
-        node.style = { background: '#8DA9C4' };
+  let connector = (array, connectorNodeStyle) => {
+    if (!array) return;
+    let connectorBucket = [];
+
+    if (selectedCurrentSequence.toString() == 'If Else') {
+      for (let i = 0; i < array.length - 1; i++) {
+        if (i < 2 || i == 3) {
+          let connectorN = {
+            id: 'connector-' + nanoid(),
+            source: array[i].id,
+            target: array[i + 1].id,
+            ...connectorNodeStyle,
+          };
+          connectorBucket.push(connectorN);
+        }
+        if (i == 2 || i == 1) {
+          let connectorN = {
+            id: 'connector-' + nanoid(),
+            source: array[i].id,
+            target: array[i + 2].id,
+            ...connectorNodeStyle,
+          };
+          connectorBucket.push(connectorN);
+        }
       }
-      return node;
-    });
+    } else if (selectedCurrentSequence.toString() == 'While loop') {
+      for (let i = 0; i < array.length - 1; i++) {
+        if (i < 1) {
+          let connectorN = {
+            id: 'connector-' + nanoid(),
+            source: array[i].id,
+            target: array[i + 1].id,
+            ...connectorNodeStyle,
+          };
 
-    return newState;
+          connectorBucket.push(connectorN);
+        } else if (i == 1) {
+          let style = {
+            type: 'step',
+            style: { stroke: '#f6ab6c' },
+            animated: true,
+            labelStyle: { fill: '#f6ab6c', fontWeight: 700 },
+          };
+
+          let connectorN = {
+            id: 'connector-' + nanoid(),
+            source: array[i].id,
+            target: array[i + 2].id,
+            ...style,
+            animated: false,
+            style: { stroke: '#bebebe' },
+            labelStyle: { fill: '#777777', fontWeight: 700 },
+            label: 'false',
+          };
+          let connectorTrue = {
+            id: 'connector-' + nanoid(),
+            source: array[i].id,
+            target: array[i + 1].id,
+            ...style,
+            //
+          };
+
+          let connectorTrue2 = {
+            // label: 'true',
+            id: 'connector-' + nanoid(),
+            source: array[i + 1].id,
+            target: array[i].id,
+            ...style,
+
+            // type: 'output',
+            type: 'smoothstep',
+          };
+
+          connectorBucket.push(connectorN);
+          connectorBucket.push(connectorTrue);
+          connectorBucket.push(connectorTrue2);
+        }
+      }
+    } else if (selectedCurrentSequence.toString() == 'Try Catch') {
+      for (let i = 0; i < array.length - 1; i++) {
+        let connectorN = {
+          id: 'connector-' + nanoid(),
+          source: array[i].id,
+          target: array[i + 1].id,
+          ...connectorNodeStyle,
+        };
+        connectorBucket.push(connectorN);
+      }
+      let lastandN = {
+        id: 'connector-' + nanoid(),
+        source: array[1].id,
+        target: array[3].id,
+        ...connectorNodeStyle,
+      };
+      connectorBucket.push(lastandN);
+    } else {
+      for (let i = 0; i < array.length - 1; i++) {
+        let connectorN = {
+          id: 'connector-' + nanoid(),
+          source: array[i].id,
+          target: array[i + 1].id,
+          ...connectorNodeStyle,
+        };
+        connectorBucket.push(connectorN);
+      }
+    }
+    return connectorBucket;
   };
 
-  nodes = updateFunction();
-  useEffect(() => {
-    updateFunction();
-    updateSequence();
-  });
+  let updateFunction = (element) => {
+    if (!element && selectedFunctions.name != '') {
+      return; //nodes;
+    }
+    setNodes((nodes) => {
+      for (let i = 0; i < nodes.length; i++) {
+        if (nodes[i].id == selectedFlowRendererNodeId) {
+          nodes[i]['data'] = {
+            label: selectedFunctions.name,
+            funcID: selectedFunctions.id,
+          };
+          nodes[i]['style'] = { background: '#8DA9C4' };
+        }
+      }
+      return [...nodes];
+    });
+  };
+
+  let addNodeSequence = () => {
+    setNodes([]);
+    let [arrayofNodes, style] = initNodes();
+    let Y = canvasSize.height / 2;
+    let startX = canvasSize.width - 85 + 70,
+      endX = canvasSize.width - 5;
+    const numOfNodes = 2;
+    let result = [];
+    for (let i = 0; i < numOfNodes; i++) {
+      startX = endX - (startX + 85 + 180 * numOfNodes) / numOfNodes;
+      result.push({
+        id: nanoid(),
+        data: { label: `Node ${i}` },
+        width: 140,
+        position: { x: startX, y: Y - 5 },
+        style: {
+          fontWeight: 400,
+          fontSize: 15,
+          background: '#eee',
+          color: '#333',
+        },
+      });
+    }
+
+    let connectorNodeStyle = {
+      animated: false,
+      type: 'smoothstep',
+      arrowHeadType: 'arrowclosed',
+    };
+
+    let addConnectorLines = connector(
+      [arrayofNodes[0], ...result, arrayofNodes[1]],
+      connectorNodeStyle
+    );
+
+    setNodes([
+      arrayofNodes[0],
+      ...result,
+      arrayofNodes[1],
+      ...addConnectorLines,
+    ]);
+  };
+
+  const styleDefault = {
+    background: '#333',
+    color: '#fff',
+    border: '1px solid #bbb',
+    padding: 5,
+  };
+
+  let initNodes = () => {
+    let s = {
+      id: nanoid(),
+      data: { label: 'start' },
+
+      position: { x: 5, y: canvasSize.height / 2 },
+      style: { ...styleDefault, width: 70 },
+    };
+    let e = {
+      id: nanoid(),
+      data: { label: 'end' },
+      position: { x: canvasSize.width - 85, y: canvasSize.height / 2 },
+      style: { ...styleDefault, width: 70 },
+    };
+
+    let connectorNodeStyle = {
+      animated: false,
+      type: 'smoothstep',
+      arrowHeadType: 'arrowclosed',
+      label: 'Select a flow on the left menu',
+      style: { fontSize: '40px' },
+      labelStyle: { fill: '#0B2545', fontWeight: 700, fontSize: '20px' },
+    };
+    return [[s, e], connectorNodeStyle];
+  };
+
+  let placementNode = () => {
+    setNodes([]);
+    let [arrayofNodes, style] = initNodes();
+    if (nodes.length == 0 && canvasSize.width != 0) {
+      let addConnectorLines = connector(arrayofNodes, style);
+      setNodes([...arrayofNodes, ...addConnectorLines]);
+    }
+  };
+
+  let addIfElseSequence = () => {
+    setNodes([]);
+    let [arrayofNodes, style] = initNodes();
+    let Y = canvasSize.height / 2;
+    let startX = canvasSize.width - 85 + 70,
+      endX = canvasSize.width - 5;
+    const numOfNodes = 3;
+    let result = [];
+    for (let i = 0; i < numOfNodes; i++) {
+      if (i % 3 == 0) {
+        Y = canvasSize.height / 2;
+        startX = endX - (startX + 85 + 180 * numOfNodes) / numOfNodes - 100;
+      } else if (i == 1) {
+        Y = canvasSize.height / 2 - 50;
+        startX += 190;
+      } else {
+        Y = canvasSize.height / 2 + 50;
+        startX;
+      }
+
+      result.push({
+        id: nanoid(),
+        data: { label: `Node ${i}` },
+        width: 140,
+        position: { x: startX, y: Y - 5 },
+        style: {
+          fontWeight: 400,
+          fontSize: 15,
+          background: '#eee',
+          color: '#333',
+        },
+      });
+    }
+
+    let connectorNodeStyle = {
+      animated: false,
+      type: 'smoothstep',
+      arrowHeadType: 'arrowclosed',
+    };
+
+    let addConnectorLines = connector(
+      [arrayofNodes[0], ...result, arrayofNodes[1]],
+      connectorNodeStyle
+    );
+
+    setNodes([
+      arrayofNodes[0],
+      ...result,
+      arrayofNodes[1],
+      ...addConnectorLines,
+    ]);
+  };
+
+  let addWhileSequence = () => {
+    setNodes([]);
+    let [arrayofNodes, style] = initNodes();
+    let Y = canvasSize.height / 2;
+    let startX = canvasSize.width - 85 + 70,
+      endX = canvasSize.width - 5;
+    const numOfNodes = 2;
+    let result = [];
+    for (let i = 0; i < numOfNodes; i++) {
+      startX = endX - (startX + 85 + 180 * numOfNodes) / numOfNodes;
+      if (i == 0) Y -= 100;
+      else Y = canvasSize.height / 2;
+      result.push({
+        id: nanoid(),
+        data: { label: `Node ${i}` },
+        width: 140,
+        position: { x: startX, y: Y - 5 },
+        style: {
+          fontWeight: 400,
+          fontSize: 15,
+          background: '#eee',
+          color: '#333',
+        },
+        targetPosition: 'left',
+      });
+    }
+
+    let connectorNodeStyle = {
+      animated: false,
+      type: 'smoothstep',
+      arrowHeadType: 'arrowclosed',
+    };
+
+    let addConnectorLines = connector(
+      [arrayofNodes[0], ...result, arrayofNodes[1]],
+      connectorNodeStyle
+    );
+
+    setNodes([
+      arrayofNodes[0],
+      ...result,
+      arrayofNodes[1],
+      ...addConnectorLines,
+    ]);
+  };
+
+  let tryCatchSequence = () => {
+    setNodes([]);
+    let [arrayofNodes, style] = initNodes();
+    let Y = canvasSize.height / 2;
+    let startX = 0, //canvasSize.width - 85 + 140,
+      endX = canvasSize.width - 5;
+    const numOfNodes = 3;
+    let result = [];
+    for (let i = 0; i < numOfNodes; i++) {
+      startX += 45 + (endX - 85) / (numOfNodes + 3);
+      //endX - (startX + 85 + 140 + 70 * numOfNodes) / numOfNodes;
+      if (i == 1) Y -= 100;
+      else Y = canvasSize.height / 2;
+
+      result.push({
+        id: nanoid(),
+        data: { label: `Node ${i}` },
+        width: 140,
+        position: { x: startX, y: Y - 5 },
+        style: {
+          fontWeight: 400,
+          fontSize: 15,
+          background: '#eee',
+          color: '#333',
+        },
+        targetPosition: 'left',
+      });
+    }
+
+    let connectorNodeStyle = {
+      animated: false,
+      type: 'smoothstep',
+      arrowHeadType: 'arrowclosed',
+    };
+
+    let addConnectorLines = connector(
+      [arrayofNodes[0], ...result, arrayofNodes[1]],
+      connectorNodeStyle
+    );
+
+    setNodes([
+      arrayofNodes[0],
+      ...result,
+      arrayofNodes[1],
+      ...addConnectorLines,
+    ]);
+  };
 
   const resultFunc = combineResult(
     compositionName,
     selectedCurrentSequence,
     nodes
   );
+
   const onElementClick = (event, element) => {
     reduxDispatch(setFlowRendererNodeId(element.id));
-    reduxDispatch(setCurrentFunc({ id: '', name: '' }));
+    //reduxDispatch(setCurrentFunc({ id: '', name: '' }));
+    //console.log('CLICK', event, element);
+    if (element.id) {
+      updateFunction(element);
+    }
   };
 
   function changeCompositionName(name) {
     reduxDispatch(setCompositionName(name));
   }
 
+  useEffect(() => {
+    if (canvasRef.current) {
+      setCanvasSize({
+        width: canvasRef.current.offsetWidth,
+        height: canvasRef.current.offsetHeight,
+      });
+    }
+    if (canvasSize.width != 0) {
+      placementNode();
+    }
+    if (selectedCurrentSequence.toString() == 'Sequence') {
+      addNodeSequence();
+    } else if (selectedCurrentSequence.toString() == 'If Else') {
+      addIfElseSequence();
+    } else if (selectedCurrentSequence.toString() == 'While loop') {
+      addWhileSequence();
+    } else if (selectedCurrentSequence.toString() == 'Try Catch') {
+      tryCatchSequence();
+    }
+  }, [canvasSize.width, selectedCurrentSequence]);
   return (
     <div>
-      <ReactFlow
-        elements={nodes}
-        style={{ background: 'white', width: '100%', height: '300px' }}
-        onElementClick={onElementClick}
-      >
-        <Background color="#ccc" gap={3} />
-      </ReactFlow>
+      <div ref={canvasRef}>
+        <ReactFlow
+          elements={nodes}
+          style={{ background: 'white', width: '100%', height: '300px' }}
+          onElementClick={onElementClick}
+          onConnect={onConnect}
+        >
+          <Background color="#ccc" gap={3} />
+        </ReactFlow>
+      </div>
       <FlowName
         onSave={() => {
           props.onSave(resultFunc);

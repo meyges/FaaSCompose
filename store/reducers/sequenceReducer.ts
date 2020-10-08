@@ -20,7 +20,7 @@ const sequenceSlice = createSlice({
   name: 'sequence',
   initialState: {
     initialSequences: {
-      list: ['ifelse', 'sequence'],
+      list: ['If Else', 'Sequence', 'While loop', 'Try Catch'],
       clickedSequence: '',
     },
   },
